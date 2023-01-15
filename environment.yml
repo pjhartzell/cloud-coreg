@@ -1,0 +1,19 @@
+name: cloud-coreg
+channels:
+  - conda-forge
+dependencies:
+  - python-pdal
+  - opencv
+  - rasterio
+  - trimesh
+  - matplotlib
+  - scikit-image
+  - enlighten
+  - numpy
+  - planetary-computer
+  - pystac-client
+  - shapely
+  - boto3
+  - pip
+  - pip:
+    - codem==0.24.0

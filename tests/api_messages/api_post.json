@@ -1,0 +1,9 @@
+{
+    "MessageBody": {
+        "aoiFile": "AOI-DigitalSurfaceModel.tif",
+        "fndFile": "FND-PointCloud.laz",
+        "fndBufferFactor": 2,
+        "codemMinResolution": 1,
+        "codemSolveScale": true
+    }
+}
