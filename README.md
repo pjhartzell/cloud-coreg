@@ -17,7 +17,7 @@ flowchart LR
 
 ## Process kick-off
 
-There are two ways to kick off a `cloud-codem` run:
+There are two ways to kick off a `cloud-coreg` run:
 
 1. **Super simple**
 
