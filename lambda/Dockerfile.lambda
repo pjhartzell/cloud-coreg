@@ -14,7 +14,7 @@ ENV PATH /opt/conda/envs/cloud-coreg/bin:$PATH
 
 # Lambda
 RUN pip install awslambdaric
-COPY src/cloud_coreg ./cloud_coreg
+COPY cloud_coreg ./cloud_coreg
 
 ENTRYPOINT [ "python", "-m", "awslambdaric" ]
 CMD [ "cloud_coreg.app.handler" ]
