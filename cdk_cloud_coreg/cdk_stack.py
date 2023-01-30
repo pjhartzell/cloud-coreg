@@ -2,40 +2,65 @@ import aws_cdk.aws_lambda as _lambda
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_s3_notifications as s3n
 import aws_cdk.aws_sqs as sqs
+import aws_cdk.aws_apigateway as apigateway
+import aws_cdk.aws_iam as iam
 from aws_cdk.aws_lambda_event_sources import SqsEventSource
-from aws_cdk.aws_apigatewayv2_alpha import HttpApi, HttpMethod
-from aws_cdk.aws_apigatewayv2_integrations_alpha import HttpLambdaIntegration
 from aws_cdk import RemovalPolicy, Stack, Duration, Size
 from constructs import Construct
-from aws_solutions_constructs.aws_apigateway_sqs import ApiGatewayToSqs
 
 
 class CloudCoRegStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        aoi_bucket = s3.Bucket(
+        self._create_roles()
+
+        self._create_buckets()
+
+        self._create_queues()
+
+        self._create_rest_api()
+
+        self._create_lambda()
+
+        self.aoi_trigger_bucket.add_object_created_notification(
+            s3n.SqsDestination(self.lambda_feeder_queue)
+        )
+        self.aoi_trigger_bucket.grant_read(self.coreg_lambda)
+        self.aoi_bucket.grant_read(self.coreg_lambda)
+        self.foundation_bucket.grant_read(self.coreg_lambda)
+        self.registered_bucket.grant_read_write(self.coreg_lambda)
+
+    def _create_roles(self) -> None:
+        self.integration_role = iam.Role(
+            self,
+            "integration-role",
+            assumed_by=iam.ServicePrincipal("apigateway.amazonaws.com")
+        )
+
+    def _create_buckets(self) -> None:
+        self.aoi_bucket = s3.Bucket(
             self,
             "aoi",
             bucket_name="cloud-coreg-aoi",
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
-        aoi_trigger_bucket = s3.Bucket(
+        self.aoi_trigger_bucket = s3.Bucket(
             self,
             "aoi-trigger",
             bucket_name="cloud-coreg-aoi-trigger",
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
-        foundation_bucket = s3.Bucket(
+        self.foundation_bucket = s3.Bucket(
             self,
             "foundation",
             bucket_name="cloud-coreg-foundation",
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
-        registered_bucket = s3.Bucket(
+        self.registered_bucket = s3.Bucket(
             self,
             "registered",
             bucket_name="cloud-coreg-registered",
@@ -43,58 +68,109 @@ class CloudCoRegStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        dead_letter_queue = sqs.Queue(
+    def _create_queues(self) -> None:
+        self.dead_letter_queue = sqs.Queue(
             self,
             "dead-letter",
             retention_period=Duration.days(4),
         )
-        lambda_feeder_queue = sqs.Queue(
+        self.lambda_feeder_queue = sqs.Queue(
             self,
             "coreg-feeder",
             dead_letter_queue={
-                "queue": dead_letter_queue,
+                "queue": self.dead_letter_queue,
                 "max_receive_count": 1,
             },
             visibility_timeout=Duration.hours(1),
             retention_period=Duration.days(4),
         )
-        api_gateway_to_sqs_pattern = ApiGatewayToSqs(
+        self.lambda_feeder_queue.grant_send_messages(self.integration_role)
+
+    def _create_rest_api(self) -> None:
+        self.api = apigateway.RestApi(
             self,
-            "api-gateway-to-sqs",
-            existing_queue_obj=lambda_feeder_queue,
-            allow_create_operation=True,
-        )
-        aoi_trigger_bucket.add_object_created_notification(
-            s3n.SqsDestination(api_gateway_to_sqs_pattern.sqs_queue)
+            "coreg-api",
+            deploy_options={"stage_name": "beta"}
         )
 
-        # dead_letter_queue = sqs.Queue(
-        #     self,
-        #     "dead-letter",
-        #     retention_period=Duration.days(4),
-        # )
-        # lambda_feeder_queue = sqs.Queue(
-        #     self,
-        #     "coreg-feeder",
-        #     dead_letter_queue={
-        #         "queue": dead_letter_queue,
-        #         "max_receive_count": 1,
-        #     },
-        #     visibility_timeout=Duration.hours(1),
-        #     retention_period=Duration.days(4),
-        # )
-        # aoi_trigger_bucket.add_object_created_notification(
-        #     s3n.SqsDestination(lambda_feeder_queue)
-        # )
+        sqs_integration = apigateway.AwsIntegration(
+            service="sqs",
+            integration_http_method="POST",
+            path=f"{self.account}/{self.lambda_feeder_queue.queue_name}",
+            options=apigateway.IntegrationOptions(
+                credentials_role=self.integration_role,
+                integration_responses=[
+                    apigateway.IntegrationResponse(
+                        status_code="200",
+                        response_templates={
+                            "application/json": '{ "Enqueued": "True" }'
+                        }
+                    )
+                ],
+                passthrough_behavior=apigateway.PassthroughBehavior.NEVER,
+                request_parameters={
+                    "integration.request.header.Content-Type": "'application/x-www-form-urlencoded'"
+                },
+                request_templates={
+                    "application/json": "Action=SendMessage&MessageBody=$input.body"
+                }
+            )
+        )
 
-        coreg_lambda = _lambda.DockerImageFunction(
+        request_model = self.api.add_model(
+            "request-model",
+            schema=apigateway.JsonSchema(
+                schema=apigateway.JsonSchemaVersion.DRAFT4,
+                title="RequestModel",
+                type=apigateway.JsonSchemaType.OBJECT,
+                properties={
+                    "aoiFile": apigateway.JsonSchema(
+                        type=apigateway.JsonSchemaType.STRING
+                    ),
+                    "fndFile": apigateway.JsonSchema(
+                        type=apigateway.JsonSchemaType.STRING
+                    ),
+                    "fndBufferFactor": apigateway.JsonSchema(
+                        type=apigateway.JsonSchemaType.NUMBER,
+                        minimum=1,
+                        maximum=10
+                    ),
+                    "codemMinResolution": apigateway.JsonSchema(
+                        type=apigateway.JsonSchemaType.NUMBER,
+                        minimum=0,
+                        exclusive_minimum=True
+                    ),
+                    "codemSolveScale": apigateway.JsonSchema(
+                        type=apigateway.JsonSchemaType.BOOLEAN
+                    )
+                },
+                required=["aoiFile"],
+                additional_properties=False
+            )
+        )
+
+        api_coregister_resource = self.api.root.add_resource("coregister")
+        api_coregister_resource.add_method(
+            http_method="POST",
+            integration=sqs_integration,
+            request_models={"application/json": request_model},
+            request_validator_options=apigateway.RequestValidatorOptions(
+                request_validator_name="request-validator",
+                validate_request_body=True,
+                validate_request_parameters=False
+            ),
+            method_responses=[apigateway.MethodResponse(status_code="200")]
+        )
+
+    def _create_lambda(self) -> None:
+        self.coreg_lambda = _lambda.DockerImageFunction(
             self,
             "coreg",
             code=_lambda.DockerImageCode.from_image_asset("lambda"),
             environment={
-                "API_AOI_BUCKET": aoi_bucket.bucket_name,
-                "API_FND_BUCKET": foundation_bucket.bucket_name,
-                "RESULT_BUCKET": registered_bucket.bucket_name,
+                "API_AOI_BUCKET": self.aoi_bucket.bucket_name,
+                "API_FND_BUCKET": self.foundation_bucket.bucket_name,
+                "RESULT_BUCKET": self.registered_bucket.bucket_name,
                 "BUFFER_FACTOR": "2",
                 "MPLCONFIGDIR": "tmp/matplotlib",
                 "SOLVE_SCALE": "True",
@@ -103,11 +179,6 @@ class CloudCoRegStack(Stack):
             memory_size=2048,
             ephemeral_storage_size=Size.mebibytes(2048),
         )
-        coreg_lambda.add_event_source(
-            SqsEventSource(api_gateway_to_sqs_pattern.sqs_queue, batch_size=1)
+        self.coreg_lambda.add_event_source(
+            SqsEventSource(self.lambda_feeder_queue, batch_size=1)
         )
-
-        aoi_trigger_bucket.grant_read(coreg_lambda)
-        aoi_bucket.grant_read(coreg_lambda)
-        foundation_bucket.grant_read(coreg_lambda)
-        registered_bucket.grant_read_write(coreg_lambda)
