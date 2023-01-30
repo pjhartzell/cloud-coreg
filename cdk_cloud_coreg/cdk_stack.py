@@ -1,11 +1,11 @@
+import aws_cdk.aws_apigateway as apigateway
+import aws_cdk.aws_iam as iam
 import aws_cdk.aws_lambda as _lambda
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_s3_notifications as s3n
 import aws_cdk.aws_sqs as sqs
-import aws_cdk.aws_apigateway as apigateway
-import aws_cdk.aws_iam as iam
+from aws_cdk import Duration, RemovalPolicy, Size, Stack
 from aws_cdk.aws_lambda_event_sources import SqsEventSource
-from aws_cdk import RemovalPolicy, Stack, Duration, Size
 from constructs import Construct
 
 
@@ -35,7 +35,7 @@ class CloudCoRegStack(Stack):
         self.integration_role = iam.Role(
             self,
             "integration-role",
-            assumed_by=iam.ServicePrincipal("apigateway.amazonaws.com")
+            assumed_by=iam.ServicePrincipal("apigateway.amazonaws.com"),
         )
 
     def _create_buckets(self) -> None:
@@ -88,9 +88,7 @@ class CloudCoRegStack(Stack):
 
     def _create_rest_api(self) -> None:
         self.api = apigateway.RestApi(
-            self,
-            "coreg-api",
-            deploy_options={"stage_name": "beta"}
+            self, "coreg-api", deploy_options={"stage_name": "beta"}
         )
 
         sqs_integration = apigateway.AwsIntegration(
@@ -104,7 +102,7 @@ class CloudCoRegStack(Stack):
                         status_code="200",
                         response_templates={
                             "application/json": '{ "Enqueued": "True" }'
-                        }
+                        },
                     )
                 ],
                 passthrough_behavior=apigateway.PassthroughBehavior.NEVER,
@@ -113,8 +111,8 @@ class CloudCoRegStack(Stack):
                 },
                 request_templates={
                     "application/json": "Action=SendMessage&MessageBody=$input.body"
-                }
-            )
+                },
+            ),
         )
 
         request_model = self.api.add_model(
@@ -131,22 +129,20 @@ class CloudCoRegStack(Stack):
                         type=apigateway.JsonSchemaType.STRING
                     ),
                     "fndBufferFactor": apigateway.JsonSchema(
-                        type=apigateway.JsonSchemaType.NUMBER,
-                        minimum=1,
-                        maximum=10
+                        type=apigateway.JsonSchemaType.NUMBER, minimum=1, maximum=10
                     ),
                     "codemMinResolution": apigateway.JsonSchema(
                         type=apigateway.JsonSchemaType.NUMBER,
                         minimum=0,
-                        exclusive_minimum=True
+                        exclusive_minimum=True,
                     ),
                     "codemSolveScale": apigateway.JsonSchema(
                         type=apigateway.JsonSchemaType.BOOLEAN
-                    )
+                    ),
                 },
                 required=["aoiFile"],
-                additional_properties=False
-            )
+                additional_properties=False,
+            ),
         )
 
         api_coregister_resource = self.api.root.add_resource("coregister")
@@ -157,9 +153,9 @@ class CloudCoRegStack(Stack):
             request_validator_options=apigateway.RequestValidatorOptions(
                 request_validator_name="request-validator",
                 validate_request_body=True,
-                validate_request_parameters=False
+                validate_request_parameters=False,
             ),
-            method_responses=[apigateway.MethodResponse(status_code="200")]
+            method_responses=[apigateway.MethodResponse(status_code="200")],
         )
 
     def _create_lambda(self) -> None:
