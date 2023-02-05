@@ -1,6 +1,6 @@
 # cloud-coreg
 
-An AWS implementation of [CODEM](https://github.com/NCALM-UH/CODEM), a tool for 3D data co-registration.
+An AWS implementation of [CODEM](https://github.com/NCALM-UH/CODEM), a tool for 3D data coregistration.
 
 CODEM spatially solves and applies a six or seven degree of freedom transformation to register a 3D area of interest (AoI) dataset to a 3D foundation dataset. The AoI and foundation datasets can be a digital surface model (DSM), point cloud, or mesh product. Refer to [CODEM](https://github.com/NCALM-UH/CODEM)'s documentation for supported formats.
 
@@ -15,16 +15,16 @@ flowchart LR
     data("STAC API<br>(USGS 3DEP)<br><br>S3<br>(aoi)<br>(foundation)")-->lambda
 ```
 
-## Deployment
+## Deploying
 
 You will need [cdk](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_install) installed and [bootstrapped](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.html#getting_started_bootstrap).
 
 1. Populate the `bucket_prefix` field in the `context` object in the [cdk.json](cdk.json) file. The prefix is used to create simple s3 bucket names (as opposed to the complex default names assigned by CloudFormation) to ease data transfer via the [AWS CLI](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3/cp.html). The bucket names will be::
 
-    - {prefix}-aoi
-    - {prefix}-aoi-trigger
-    - {prefix}-foundation
-    - {prefix}-registered
+    - <bucket_prefix>-aoi
+    - <bucket_prefix>-aoi-trigger
+    - <bucket_prefix>-foundation
+    - <bucket_prefix>-registered
 
 2. Run `cdk deploy --outputs-file cdk-outputs.json`. The physical names of the buckets and the API URL will be output to the terminal and saved to the `cdk-outputs.json` file. Note that you must append `coregister` to the API URL when making a coregister API call.
 
@@ -34,9 +34,8 @@ There are two ways to kick off a `cloud-coreg` run:
 
 1. **Simple:** Copy an AoI file to the trigger bucket
 
-    Copy an AoI file to the `<bucket_prefix>-aoi-trigger` bucket. This will pull foundation data from the [Planetary Computer](https://planetarycomputer.microsoft.com/)'s USGS 3DEP digital surface model holdings and run CODEM with all [parameters](https://github.com/NCALM-UH/CODEM/blob/main/docs/configuration.md) set to their defaults. You can use the AWS Console or CLI.
+    Copy an AoI file to the `<bucket_prefix>-aoi-trigger` bucket. This will pull foundation data from the [Planetary Computer](https://planetarycomputer.microsoft.com/)'s USGS 3DEP digital surface model holdings and run CODEM with all [parameters](https://github.com/NCALM-UH/CODEM/blob/main/docs/configuration.md) set to their defaults.
 
-    CLI example:
     ```shell
     $ aws s3 cp tests/data/AOI-DigitalSurfaceModel.tif s3://myprefix-aoi-trigger
     ```
@@ -50,7 +49,6 @@ There are two ways to kick off a `cloud-coreg` run:
     - `codemMinResolution`: CODEM's minimum resolution (in meters) parameter. [default=2] (optional)
     - `codemSolveScale`: CODEM's solve scale parameter. [default=True] (optional)
 
-    CLI Example:
     ```shell
     $ aws s3 cp tests/data/0_smallfnd.tif s3://myprefix-foundation
     $ aws s3 cp tests/data/1_smallAOI.tif s3://myprefix-aoi
@@ -58,7 +56,9 @@ There are two ways to kick off a `cloud-coreg` run:
     # { "Enqueued": "True" }%
     ```
 
-In both cases the coregistered AoI will be saved to the `<bucket_prefix>-registered` bucket in a directory named `<aoi_file_name>-registered-<timestamp>`. You can check for completion via the AWS console or CLI. For example, if you ran a coregistration with the AOI-DigitalSurfaceModel.tif file, you can see the created directory by listing the contents of the registered bucket:
+## Accessing the registration results
+
+In both cases the registered AoI will be saved to the `<bucket_prefix>-registered` bucket in a directory named `<aoi_file_name>-registered-<timestamp>`. For example, if you ran a coregistration with the AOI-DigitalSurfaceModel.tif file, you can see the created directory by listing the contents of the registered bucket:
 
 ```shell
 $ aws s3 ls s3://myprefix-registered
