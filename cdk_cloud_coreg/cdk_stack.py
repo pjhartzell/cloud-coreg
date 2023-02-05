@@ -4,7 +4,7 @@ import aws_cdk.aws_lambda as _lambda
 import aws_cdk.aws_s3 as s3
 import aws_cdk.aws_s3_notifications as s3n
 import aws_cdk.aws_sqs as sqs
-from aws_cdk import Duration, RemovalPolicy, Size, Stack
+from aws_cdk import CfnOutput, Duration, RemovalPolicy, Size, Stack
 from aws_cdk.aws_lambda_event_sources import SqsEventSource
 from constructs import Construct
 
@@ -31,39 +31,42 @@ class CloudCoRegStack(Stack):
         self.foundation_bucket.grant_read(self.coreg_lambda)
         self.registered_bucket.grant_read_write(self.coreg_lambda)
 
+        self._output_names()
+
     def _create_roles(self) -> None:
         self.integration_role = iam.Role(
             self,
-            "integration-role",
+            "integrationRole",
             assumed_by=iam.ServicePrincipal("apigateway.amazonaws.com"),
         )
 
     def _create_buckets(self) -> None:
+        prefix = self.node.try_get_context("bucket_prefix")
         self.aoi_bucket = s3.Bucket(
             self,
             "aoi",
-            bucket_name="cloud-coreg-aoi",
+            bucket_name=f"{prefix}-aoi",
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
         self.aoi_trigger_bucket = s3.Bucket(
             self,
-            "aoi-trigger",
-            bucket_name="cloud-coreg-aoi-trigger",
+            "aoiTrigger",
+            bucket_name=f"{prefix}-aoi-trigger",
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
         self.foundation_bucket = s3.Bucket(
             self,
             "foundation",
-            bucket_name="cloud-coreg-foundation",
+            bucket_name=f"{prefix}-foundation",
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
         self.registered_bucket = s3.Bucket(
             self,
             "registered",
-            bucket_name="cloud-coreg-registered",
+            bucket_name=f"{prefix}-registered",
             auto_delete_objects=True,
             removal_policy=RemovalPolicy.DESTROY,
         )
@@ -71,12 +74,12 @@ class CloudCoRegStack(Stack):
     def _create_queues(self) -> None:
         self.dead_letter_queue = sqs.Queue(
             self,
-            "dead-letter",
+            "deadLetter",
             retention_period=Duration.days(4),
         )
         self.lambda_feeder_queue = sqs.Queue(
             self,
-            "coreg-feeder",
+            "coregFeeder",
             dead_letter_queue={
                 "queue": self.dead_letter_queue,
                 "max_receive_count": 1,
@@ -88,7 +91,7 @@ class CloudCoRegStack(Stack):
 
     def _create_rest_api(self) -> None:
         self.api = apigateway.RestApi(
-            self, "coreg-api", deploy_options={"stage_name": "beta"}
+            self, "coregApi", deploy_options={"stage_name": "test"}
         )
 
         sqs_integration = apigateway.AwsIntegration(
@@ -116,7 +119,7 @@ class CloudCoRegStack(Stack):
         )
 
         request_model = self.api.add_model(
-            "request-model",
+            "requestModel",
             schema=apigateway.JsonSchema(
                 schema=apigateway.JsonSchemaVersion.DRAFT4,
                 title="RequestModel",
@@ -145,8 +148,8 @@ class CloudCoRegStack(Stack):
             ),
         )
 
-        api_coregister_resource = self.api.root.add_resource("coregister")
-        api_coregister_resource.add_method(
+        self.api_coregister_resource = self.api.root.add_resource("coregister")
+        self.api_coregister_resource.add_method(
             http_method="POST",
             integration=sqs_integration,
             request_models={"application/json": request_model},
@@ -177,4 +180,16 @@ class CloudCoRegStack(Stack):
         )
         self.coreg_lambda.add_event_source(
             SqsEventSource(self.lambda_feeder_queue, batch_size=1)
+        )
+
+    def _output_names(self) -> None:
+        CfnOutput(self, "aoiBucketName", value=self.aoi_bucket._physical_name)
+        CfnOutput(
+            self, "aoiTriggerBucketName", value=self.aoi_trigger_bucket._physical_name
+        )
+        CfnOutput(
+            self, "foundationBucketName", value=self.foundation_bucket._physical_name
+        )
+        CfnOutput(
+            self, "registeredBucketName", value=self.registered_bucket._physical_name
         )

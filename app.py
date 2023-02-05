@@ -5,6 +5,6 @@ import aws_cdk as cdk
 from cdk_cloud_coreg.cdk_stack import CloudCoRegStack
 
 app = cdk.App()
-CloudCoRegStack(app, "cdk-cloud-coreg")
+CloudCoRegStack(app, "cdkCloudCoreg")
 
 app.synth()

@@ -6,5 +6,4 @@ cdk.out/
 
 *__pycache__/
 
-
-
+cdk-outputs.json
