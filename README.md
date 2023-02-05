@@ -50,17 +50,16 @@ There are two ways to kick off a `cloud-coreg` run:
     - `codemMinResolution`: CODEM's minimum resolution (in meters) parameter. [default=2] (optional)
     - `codemSolveScale`: CODEM's solve scale parameter. [default=True] (optional)
 
-<br />
-    ```shell
-    $ aws s3 cp tests/data/0_smallfnd.tif s3://myprefix-foundation
-    $ aws s3 cp tests/data/1_smallAOI.tif s3://myprefix-aoi
-    % curl -X POST -H "Content-Type: application/json" -d '{"fndFile": "0_smallfnd.tif", "aoiFile": "1_smallAOI.tif"}' https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/test/coregister
-    # { "Enqueued": "True" }%
-    ```
+        ```shell
+        $ aws s3 cp tests/data/0_smallfnd.tif s3://myprefix-foundation
+        $ aws s3 cp tests/data/1_smallAOI.tif s3://myprefix-aoi
+        % curl -X POST -H "Content-Type: application/json" -d '{"fndFile": "0_smallfnd.tif", "aoiFile": "1_smallAOI.tif"}' https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/test/coregister
+        # { "Enqueued": "True" }%
+        ```
 
 ## Accessing the registration results
 
-In both cases the registered AoI will be saved to the `<bucket_prefix>-registered` bucket in a directory named `<aoi_file_name>-registered-<timestamp>`. For example, if you ran a coregistration with the AOI-DigitalSurfaceModel.tif file, you can see the created directory by listing the contents of the re gistered bucket:
+In both cases the registered AoI will be saved to the `<bucket_prefix>-registered` bucket in a directory named `<aoi_file_name>-registered-<timestamp>`. For example, if you ran a coregistration with the AOI-DigitalSurfaceModel.tif file, you can see the created directory by listing the contents of the registered bucket:
 
 ```shell
 $ aws s3 ls s3://myprefix-registered
