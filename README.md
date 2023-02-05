@@ -26,13 +26,16 @@ You will need [cdk](https://docs.aws.amazon.com/cdk/v2/guide/getting_started.htm
     - <bucket_prefix>-foundation
     - <bucket_prefix>-registered
 
-2. Run `cdk deploy --outputs-file cdk-outputs.json`. The physical names of the buckets and the API URL will be output to the terminal and saved to the `cdk-outputs.json` file. Note that you must append `coregister` to the API URL when making a coregister API call.
+2. Run `cdk deploy --outputs-file cdk-outputs.json`.
+
+    - The physical names of the buckets and the API URL will be output to the terminal and saved to the `cdk-outputs.json` file. 
+    - Note that you must append `coregister` to the API URL when making a coregister API call.
 
 ## Running
 
 There are two ways to kick off a `cloud-coreg` run:
 
-1. **Simple:** Copy an AoI file to the trigger bucket
+1. **Simple:** Copy an AoI file to the trigger bucket.
 
     Copy an AoI file to the `<bucket_prefix>-aoi-trigger` bucket. This will pull foundation data from the [Planetary Computer](https://planetarycomputer.microsoft.com/)'s USGS 3DEP digital surface model holdings and run CODEM with all [parameters](https://github.com/NCALM-UH/CODEM/blob/main/docs/configuration.md) set to their defaults.
 
@@ -40,7 +43,7 @@ There are two ways to kick off a `cloud-coreg` run:
     $ aws s3 cp tests/data/AOI-DigitalSurfaceModel.tif s3://myprefix-aoi-trigger
     ```
 
-2. **Flexible:** Make an API call with optional parameters
+2. **Flexible:** Make an API call with optional parameters.
 
     Upload an AoI file to the `<bucket_prefix>-aoi` bucket. Optionally upload a Foundation file to the `<bucket_prefix>-foundation` bucket. POST a message to the API Gateway.
 
@@ -51,7 +54,7 @@ There are two ways to kick off a `cloud-coreg` run:
     # { "Enqueued": "True" }%
     ```
     
-    Valid message values are:
+    Valid message parameters are:
 
     - `aoiFile`: Name of a file in the `<bucket_prefix>-aoi` bucket. (required)
     - `fndFile`: Name of a file in the `<bucket_prefix>-foundation` bucket. If not supplied, foundation data will be pulled from the Planetary Computer's USGS 3DEP DSM holdings. (optional)
