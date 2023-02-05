@@ -42,20 +42,22 @@ There are two ways to kick off a `cloud-coreg` run:
 
 2. **Flexible:** Make an API call with optional parameters
 
-    Upload an AoI file to the `<bucket_prefix>-aoi` bucket. Optionally upload a Foundation file to the `<bucket_prefix>-foundation` bucket. POST a message to the API Gateway. Valid message values are:
+    Upload an AoI file to the `<bucket_prefix>-aoi` bucket. Optionally upload a Foundation file to the `<bucket_prefix>-foundation` bucket. POST a message to the API Gateway.
+
+    ```shell
+    $ aws s3 cp tests/data/0_smallfnd.tif s3://myprefix-foundation
+    $ aws s3 cp tests/data/1_smallAOI.tif s3://myprefix-aoi
+    % curl -X POST -H "Content-Type: application/json" -d '{"fndFile": "0_smallfnd.tif", "aoiFile": "1_smallAOI.tif"}' https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/test/coregister
+    # { "Enqueued": "True" }%
+    ```
+    
+    Valid message values are:
 
     - `aoiFile`: Name of a file in the `<bucket_prefix>-aoi` bucket. (required)
     - `fndFile`: Name of a file in the `<bucket_prefix>-foundation` bucket. If not supplied, foundation data will be pulled from the Planetary Computer's USGS 3DEP DSM holdings. (optional)
     - `fndBufferFactor`: Factor by which to scale the AoI boundary when cropping the Foundation data. Accounts for existing mis-registration between the AoI and Foundation data. [default=2] (optional)
     - `codemMinResolution`: CODEM's minimum resolution (in meters) parameter. [default=2] (optional)
     - `codemSolveScale`: CODEM's solve scale parameter. [default=True] (optional)
-
-        ```shell
-        $ aws s3 cp tests/data/0_smallfnd.tif s3://myprefix-foundation
-        $ aws s3 cp tests/data/1_smallAOI.tif s3://myprefix-aoi
-        % curl -X POST -H "Content-Type: application/json" -d '{"fndFile": "0_smallfnd.tif", "aoiFile": "1_smallAOI.tif"}' https://xxxxxxxxxx.execute-api.us-east-1.amazonaws.com/test/coregister
-        # { "Enqueued": "True" }%
-        ```
 
 ## Accessing the registration results
 
