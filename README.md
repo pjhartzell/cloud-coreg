@@ -43,12 +43,14 @@ There are two ways to kick off a `cloud-coreg` run:
 2. **Flexible:** Make an API call with optional parameters
 
     Upload an AoI file to the `<bucket_prefix>-aoi` bucket. Optionally upload a Foundation file to the `<bucket_prefix>-foundation` bucket. POST a message to the API Gateway. Valid message values are:
+
     - `aoiFile`: Name of a file in the `<bucket_prefix>-aoi` bucket. (required)
     - `fndFile`: Name of a file in the `<bucket_prefix>-foundation` bucket. If not supplied, foundation data will be pulled from the Planetary Computer's USGS 3DEP DSM holdings. (optional)
     - `fndBufferFactor`: Factor by which to scale the AoI boundary when cropping the Foundation data. Accounts for existing mis-registration between the AoI and Foundation data. [default=2] (optional)
     - `codemMinResolution`: CODEM's minimum resolution (in meters) parameter. [default=2] (optional)
     - `codemSolveScale`: CODEM's solve scale parameter. [default=True] (optional)
 
+<br />
     ```shell
     $ aws s3 cp tests/data/0_smallfnd.tif s3://myprefix-foundation
     $ aws s3 cp tests/data/1_smallAOI.tif s3://myprefix-aoi
@@ -58,7 +60,7 @@ There are two ways to kick off a `cloud-coreg` run:
 
 ## Accessing the registration results
 
-In both cases the registered AoI will be saved to the `<bucket_prefix>-registered` bucket in a directory named `<aoi_file_name>-registered-<timestamp>`. For example, if you ran a coregistration with the AOI-DigitalSurfaceModel.tif file, you can see the created directory by listing the contents of the registered bucket:
+In both cases the registered AoI will be saved to the `<bucket_prefix>-registered` bucket in a directory named `<aoi_file_name>-registered-<timestamp>`. For example, if you ran a coregistration with the AOI-DigitalSurfaceModel.tif file, you can see the created directory by listing the contents of the re gistered bucket:
 
 ```shell
 $ aws s3 ls s3://myprefix-registered
@@ -76,8 +78,8 @@ $ aws s3 ls s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-
 Copy the results to a local directory:
 ```shell
 $ aws s3 cp --recursive s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/ ./results
-# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/registration.txt to test/registration.txt
-# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/config.yml to test/config.yml
-# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/dsm_feature_matches.png to test/dsm_feature_matches.png
-# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/AOI-DigitalSurfaceModel_registered.tif to test/AOI-DigitalSurfaceModel_registered.tif
+# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/registration.txt to results/registration.txt
+# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/config.yml to results/config.yml
+# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/dsm_feature_matches.png to results/dsm_feature_matches.png
+# download: s3://myprefix-registered/AOI-DigitalSurfaceModel-registered-2023-02-05_13-14-52/AOI-DigitalSurfaceModel_registered.tif to results/AOI-DigitalSurfaceModel_registered.tif
 ```
